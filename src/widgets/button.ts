@@ -5,113 +5,157 @@ import {Window, Widget, RoleType, EventArgs} from "../core/ui";
 import {Rect, Text, Box} from "../core/ui";
 
 class Button extends Widget{
-    private _rect: Rect;
-    private _text: Text;
+    private _rect!: Rect;
+    private _text!: Text;
     private _input: string;
     private _fontSize: number;
-    private _text_y: number;
-    private _text_x: number;
-    private defaultText: string= "Button";
+    private _text_y!: number;
+    private _text_x!: number;
+    private defaultText: string = "Button";
     private defaultFontSize: number = 18;
     private defaultWidth: number = 80;
     private defaultHeight: number = 30;
 
-    constructor(parent:Window){
+    constructor(parent: Window){
         super(parent);
-        // set defaults
         this.height = this.defaultHeight;
         this.width = this.defaultWidth;
         this._input = this.defaultText;
         this._fontSize = this.defaultFontSize;
-        // set Aria role
         this.role = RoleType.button;
-        // render widget
         this.render();
-        // set default or starting state
         this.setState(new IdleUpWidgetState());
-        // prevent text selection
         this.selectable = false;
+        this.idleupState();
     }
 
-    set fontSize(size:number){
-        this._fontSize= size;
+    set fontSize(size: number){
+        this._fontSize = size;
         this.update();
     }
 
-    private positionText(){
-        let box:Box = this._text.bbox();
-        // in TS, the prepending with + performs a type conversion from string to number
-        this._text_y = (+this._rect.y() + ((+this._rect.height()/2)) - (box.height/2));
-        this._text.x(+this._rect.x() + 4);
-        if (this._text_y > 0){
-            this._text.y(this._text_y);
-        }
+    set label(text: string){
+        this._input = text;
+        this.update();
     }
-    
+
+    get label(): string {
+        return this._input;
+    }
+
+    set size(value: { width: number, height: number }){
+        this.width = value.width;
+        this.height = value.height;
+        this.update();
+    }
+
+    get size(): { width: number, height: number } {
+        return { width: this.width, height: this.height };
+    }
+
+    private positionText(){
+        let box: Box = this._text.bbox();
+        let rectX = +this._rect.x();
+        let rectY = +this._rect.y();
+        let rectW = +this._rect.width();
+        let rectH = +this._rect.height();
+
+        this._text.x(rectX + (rectW / 2) - (box.width / 2));
+        this._text.y(rectY + (rectH / 2) - (box.height / 2));
+    }
+
     render(): void {
         this._group = (this.parent as Window).window.group();
-        this._rect = this._group.rect(this.width, this.height);
-        this._rect.stroke("black");
-        this._text = this._group.text(this._input);
-        // Set the outer svg element 
-        this.outerSvg = this._group;
-        // Add a transparent rect on top of text to 
-        // prevent selection cursor and to handle mouse events
-        let eventrect = this._group.rect(this.width, this.height).opacity(0).attr('id', 0);
 
-        // register objects that should receive event notifications.
-        // for this widget, we want to know when the group or rect objects
-        // receive events
+        // add drop shadow using raw SVG filter
+        this._group.defs().svg(`
+            <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="3" dy="4" stdDeviation="3" flood-color="rgba(0,0,0,0.3)"/>
+            </filter>
+        `);
+
+        this._rect = this._group.rect(this.width, this.height);
+        this._rect.stroke("#1565C0").attr('stroke-width', 2).radius(10);
+        this._rect.attr('filter', 'url(#shadow)');
+
+        this._text = this._group.text(this._input);
+        this._text.font({ family: 'Arial, sans-serif', weight: '700' });
+
+        this.outerSvg = this._group;
+        let eventrect = this._group.rect(this.width, this.height).opacity(0).attr('id', 0);
         this.registerEvent(eventrect);
     }
 
     override update(): void {
-        if(this._text != null)
+        if(this._text != null){
             this._text.font('size', this._fontSize);
             this._text.text(this._input);
             this.positionText();
-
-        if(this._rect != null)
-            this._rect.fill(this.backcolor);
-        
+        }
+        if(this._rect != null){
+            this._rect.size(this.width, this.height);
+            this._rect.fill(this._backcolor);
+        }
         super.update();
     }
-    
-    pressReleaseState(): void{
 
+    pressReleaseState(): void {
         if (this.previousState instanceof PressedWidgetState)
             this.raise(new EventArgs(this));
+        this._rect.fill("#42A5F5");
+        this._rect.stroke("#1565C0");
+        this._rect.attr('filter', 'url(#shadow)');
+        this._text.fill("white");
     }
 
-    //TODO: implement the onClick event using a callback passed as a parameter
-    onClick(/*TODO: add callback parameter*/):void{}
+    onClick(callback: (event: EventArgs) => void): void {
+        this.attach(callback);
+    }
 
-    
-    //TODO: give the states something to do! Use these methods to control the visual appearance of your
-    //widget
     idleupState(): void {
-        throw new Error("Method not implemented.");
+        this._backcolor = "#2196F3";
+        this._rect.fill(this._backcolor);
+        this._rect.stroke("#1565C0");
+        this._rect.attr('filter', 'url(#shadow)');
+        this._text.fill("white");
     }
-    idledownState(): void {
-        throw new Error("Method not implemented.");
-    }
+
+    idledownState(): void { }
+
     pressedState(): void {
-        throw new Error("Method not implemented.");
+        this._rect.fill("#0D47A1");
+        this._rect.stroke("#082E6C");
+        this._rect.attr('filter', 'none');
+        this._text.fill("white");
     }
+
     hoverState(): void {
-        throw new Error("Method not implemented.");
+        this._rect.fill("#42A5F5");
+        this._rect.stroke("#1565C0");
+        this._rect.attr('filter', 'url(#shadow)');
+        this._text.fill("white");
     }
+
     hoverPressedState(): void {
-        throw new Error("Method not implemented.");
+        this._rect.fill("#0D47A1");
+        this._rect.stroke("#082E6C");
+        this._rect.attr('filter', 'none');
+        this._text.fill("white");
     }
+
     pressedoutState(): void {
-        throw new Error("Method not implemented.");
+        this._rect.fill("#2196F3");
+        this._rect.stroke("#1565C0");
+        this._rect.attr('filter', 'url(#shadow)');
+        this._text.fill("white");
     }
-    moveState(): void {
-        throw new Error("Method not implemented.");
-    }
+
+    moveState(): void { }
+
     keyupState(keyEvent?: KeyboardEvent): void {
-        throw new Error("Method not implemented.");
+        if (keyEvent && (keyEvent.key === "Enter" || keyEvent.key === " ")) {
+            this.raise(new EventArgs(this));
+        }
     }
 }
 
